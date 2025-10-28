@@ -17,16 +17,10 @@ import { SubscriptionModule } from './subscription/subscription.module';
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
-    useFactory: async (configService: ConfigService) => ({
-    uri: configService.get<string>(configService.get('NODE_ENV') === 'production' ? 'MONGO_URL_PROD' : 'MONGO_URL'),
-    retryAttempts: 3,
-    retryDelay: 1000,
-    // Додаткові оптимізації
-    maxPoolSize: 10,
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-  }),
-  inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGO_URL'),
+      }),
+      inject: [ConfigService],
     }),
     AuthModule,
     ProjectsModule,
