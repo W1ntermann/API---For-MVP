@@ -1,0 +1,42 @@
+### 🎨 Швидкий тест генерації зображень
+
+@baseUrl = http://localhost:5050/api
+@token = YOUR_TOKEN_AFTER_LOGIN
+
+### 1️⃣ Логін (скопіюйте access_token у @token вище)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@test.com",
+  "password": "test123"
+}
+
+### 2️⃣ Перевірка кредитів
+GET {{baseUrl}}/ai/credits
+Authorization: Bearer {{token}}
+
+### 3️⃣ Генерація РЕАЛЬНОГО зображення (займе 10-30 сек!)
+POST {{baseUrl}}/ai/generate-image
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "prompt": "A beautiful sunset over mountains with vibrant orange and purple colors, dramatic clouds, photorealistic",
+  "width": 1024,
+  "height": 1024
+}
+
+### 4️⃣ Переглянути згенероване зображення (замініть MEDIA_ID з відповіді вище)
+# Відкрийте у браузері: http://localhost:5050/api/media/MEDIA_ID
+GET {{baseUrl}}/media/MEDIA_ID
+Authorization: Bearer {{token}}
+
+### 5️⃣ Історія генерацій
+GET {{baseUrl}}/ai/generations?type=image
+Authorization: Bearer {{token}}
+
+### 6️⃣ Статистика кредитів після генерації
+GET {{baseUrl}}/ai/credits/stats
+Authorization: Bearer {{token}}
+
