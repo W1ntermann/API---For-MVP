@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 import { User } from '../common/schemas/user.schema';
 import { Session } from '../common/schemas/session.schema';
 import { UserCreateDto, UserLoginDto, OAuthSessionDto } from './dto/auth.dto';
@@ -136,7 +137,17 @@ export class AuthService {
         },
       };
     } catch (error) {
-      throw new BadRequestException('OAuth session creation failed');
+      console.error('OAuth error:', error);
+      
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        throw new UnauthorizedException('Invalid OAuth session');
+      }
+      
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      
+      throw new BadRequestException(`OAuth session creation failed: ${error.message || 'Unknown error'}`);
     }
   }
 
@@ -144,19 +155,28 @@ export class AuthService {
     return this.userModel.findOne({ id: userId });
   }
 
-  async logout(token: string) {
-    await this.sessionModel.deleteMany({ session_token: token });
+  async logout(token: string): Promise<{ success: boolean; message: string }> {
+    const result = await this.sessionModel.deleteMany({ session_token: token });
+    
+    // Очистити застарілі сесії
+    await this.sessionModel.deleteMany({
+      expires_at: { $lt: new Date() }
+    });
+    
+    return {
+      success: result.deletedCount > 0,
+      message: result.deletedCount > 0 
+        ? 'Logged out successfully' 
+        : 'Session not found or already expired'
+    };
   }
 
   private createJwtToken(userId: string): string {
     const payload = { user_id: userId };
-    return this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET || 'smm-preview-creator-secret-key-2025',
-      expiresIn: '7d',
-    });
+    return this.jwtService.sign(payload);
   }
 
   private generateId(): string {
-    return Math.random().toString(36).substr(2, 9);
+    return randomUUID();
   }
 }

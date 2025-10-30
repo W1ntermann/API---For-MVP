@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { ProjectCreateDto } from './dto/projects.dto';
+import { ProjectCreateDto, PaginationDto } from './dto/projects.dto';
 
 @Controller('projects')
 @UseGuards(JwtAuthGuard)
@@ -10,8 +10,15 @@ export class ProjectsController {
   constructor(private projectsService: ProjectsService) {}
 
   @Get()
-  async getProjects(@CurrentUser() user: any) {
-    return this.projectsService.getUserProjects(user.user_id);
+  async getProjects(
+    @CurrentUser() user: any,
+    @Query() pagination: PaginationDto,
+  ) {
+    return this.projectsService.getUserProjects(
+      user.user_id,
+      pagination.page,
+      pagination.limit,
+    );
   }
 
   @Post()

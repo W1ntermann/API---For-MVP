@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { randomUUID } from 'crypto';
 import { Export } from '../common/schemas/export.schema';
 import { Template } from '../common/schemas/template.schema';
 import { ExportRequestDto } from './dto/exports.dto';
@@ -58,6 +59,6 @@ export class ExportsService {
   }
 
   private generateId(): string {
-    return Math.random().toString(36).substr(2, 9);
+    return randomUUID();
   }
 }

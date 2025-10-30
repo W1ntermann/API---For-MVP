@@ -1,12 +1,15 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema({ timestamps: true })
+@Schema({ 
+  timestamps: true,
+  collection: 'projects'
+})
 export class Project extends Document {
-  @Prop({ required: true })
+  @Prop({ required: true, unique: true, index: true })
   declare id: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   user_id: string;
 
   @Prop({ required: true })
@@ -23,3 +26,7 @@ export class Project extends Document {
 }
 
 export const ProjectSchema = SchemaFactory.createForClass(Project);
+
+// Composite індекси для оптимізації запитів
+ProjectSchema.index({ user_id: 1, created_at: -1 });
+ProjectSchema.index({ user_id: 1, updated_at: -1 });

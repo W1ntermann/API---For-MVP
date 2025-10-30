@@ -1,15 +1,18 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema({ timestamps: true })
+@Schema({ 
+  timestamps: true,
+  collection: 'exports'
+})
 export class Export extends Document {
-  @Prop({ required: true })
+  @Prop({ required: true, unique: true, index: true })
   declare id: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   user_id: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   template_id: string;
 
   @Prop({ default: 'png' })
@@ -21,7 +24,7 @@ export class Export extends Document {
   @Prop({ default: 1080 })
   height: number;
 
-  @Prop({ default: 'pending' })
+  @Prop({ default: 'pending', index: true })
   status: string;
 
   @Prop()
@@ -35,3 +38,7 @@ export class Export extends Document {
 }
 
 export const ExportSchema = SchemaFactory.createForClass(Export);
+
+// Composite індекси
+ExportSchema.index({ user_id: 1, status: 1 });
+ExportSchema.index({ user_id: 1, created_at: -1 });

@@ -5,6 +5,7 @@ import { createReadStream, createWriteStream, existsSync, mkdirSync } from 'fs';
 import { promisify } from 'util';
 import { pipeline } from 'stream';
 import { join, extname } from 'path';
+import { randomUUID } from 'crypto';
 import { Media } from '../common/schemas/media.schema';
 import type { File as MulterFile } from 'multer';
 
@@ -28,8 +29,33 @@ export class MediaService {
         throw new BadRequestException('No file provided');
       }
 
+      // Валідація типу файлу
+      const allowedMimeTypes = [
+        'image/jpeg', 
+        'image/jpg',
+        'image/png', 
+        'image/gif', 
+        'image/webp',
+        'image/svg+xml'
+      ];
+      
+      if (!allowedMimeTypes.includes(file.mimetype)) {
+        throw new BadRequestException(
+          'Invalid file type. Only images (JPEG, PNG, GIF, WebP, SVG) are allowed.'
+        );
+      }
+
+      // Валідація розміру (10MB)
+      const maxSize = 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        throw new BadRequestException('File size exceeds 10MB limit');
+      }
+
+      // Санітизація імені файлу
+      const sanitizedOriginalName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+
       const mediaId = this.generateId();
-      const fileExtension = extname(file.originalname);
+      const fileExtension = extname(sanitizedOriginalName);
       const filename = `${mediaId}${fileExtension}`;
       const filePath = join(this.uploadDir, filename);
 
@@ -38,7 +64,7 @@ export class MediaService {
       const media = new this.mediaModel({
         id: mediaId,
         user_id: userId,
-        filename: file.originalname,
+        filename: sanitizedOriginalName,
         content_type: file.mimetype,
         size: file.size,
         file_path: filePath,
@@ -49,12 +75,17 @@ export class MediaService {
 
       return {
         id: mediaId,
-        filename: file.originalname,
+        filename: sanitizedOriginalName,
         url: `/api/media/${mediaId}`
       };
 
     } catch (error) {
       console.error('File upload error:', error);
+      
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      
       throw new InternalServerErrorException('File upload failed');
     }
   }
@@ -86,6 +117,6 @@ export class MediaService {
   }
 
   private generateId(): string {
-    return Math.random().toString(36).substr(2, 9);
+    return randomUUID();
   }
 }

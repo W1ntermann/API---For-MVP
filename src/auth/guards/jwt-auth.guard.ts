@@ -1,5 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Session } from '../../common/schemas/session.schema';
@@ -8,6 +9,7 @@ import { Session } from '../../common/schemas/session.schema';
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
+    private configService: ConfigService,
     @InjectModel(Session.name) private sessionModel: Model<Session>,
   ) {}
 
@@ -31,9 +33,11 @@ export class JwtAuthGuard implements CanActivate {
 
     // Check if it's a JWT token
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.JWT_SECRET || 'smm-preview-creator-secret-key-2025',
-      });
+      const secret = this.configService.get<string>('JWT_SECRET');
+      if (!secret) {
+        throw new UnauthorizedException('JWT configuration error');
+      }
+      const payload = await this.jwtService.verifyAsync(token, { secret });
       request.user = payload;
     } catch {
       throw new UnauthorizedException('Invalid token');

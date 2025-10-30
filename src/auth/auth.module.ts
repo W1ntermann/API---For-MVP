@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthController } from './auth.controller';
@@ -15,15 +16,23 @@ import { Session, SessionSchema } from '../common/schemas/session.schema';
       { name: Session.name, schema: SessionSchema },
     ]),
     JwtModule.registerAsync({
-      useFactory: () => ({
-        secret: process.env.JWT_SECRET || 'smm-preview-creator-secret-key-2025',
-        signOptions: { expiresIn: '7d' },
-      }),
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_SECRET');
+        if (!secret) {
+          throw new Error('JWT_SECRET must be defined in environment variables');
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: '7d' },
+        };
+      },
+      inject: [ConfigService],
     }),
     HttpModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtAuthGuard],
-  exports: [JwtAuthGuard, AuthService, JwtModule, MongooseModule], // Експортуємо все необхідне
+  exports: [JwtAuthGuard, AuthService, JwtModule, MongooseModule],
 })
 export class AuthModule {}

@@ -1,0 +1,213 @@
+### Backend for SMM - AI Integration Tests
+### Використовуйте REST Client extension у VSCode або Postman
+
+@baseUrl = http://localhost:5050/api
+@token = YOUR_TOKEN_HERE
+
+### 1. Реєстрація нового користувача
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123",
+  "name": "Test User"
+}
+
+### 2. Вхід (якщо вже зареєстровані)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### 3. Перевірити поточного користувача
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+### ==========================================
+### AI TEXT GENERATION TESTS
+### ==========================================
+
+### 4. Генерація тексту - Friendly tone, Medium length
+POST {{baseUrl}}/ai/generate-text
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "prompt": "Create a social media post about coffee",
+  "tone": "friendly",
+  "length": "medium"
+}
+
+### 5. Генерація тексту - Professional tone, Short length
+POST {{baseUrl}}/ai/generate-text
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "prompt": "Announce a new product launch for eco-friendly water bottles",
+  "tone": "professional",
+  "length": "short"
+}
+
+### 6. Генерація тексту - Humorous tone, Long length
+POST {{baseUrl}}/ai/generate-text
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "prompt": "Write about working from home with pets",
+  "tone": "humorous",
+  "length": "long"
+}
+
+### 7. Генерація тексту - Casual tone
+POST {{baseUrl}}/ai/generate-text
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "prompt": "Share tips for staying productive",
+  "tone": "casual",
+  "length": "medium"
+}
+
+### ==========================================
+### AI IMAGE GENERATION TESTS
+### ==========================================
+
+### 8. Генерація зображення - Квадратне (1024x1024)
+POST {{baseUrl}}/ai/generate-image
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "prompt": "A beautiful sunset over mountains with vibrant orange and purple colors",
+  "width": 1024,
+  "height": 1024
+}
+
+### 9. Генерація зображення - Горизонтальне (1792x1024)
+POST {{baseUrl}}/ai/generate-image
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "prompt": "A modern minimalist office workspace with a laptop and coffee cup",
+  "width": 1792,
+  "height": 1024
+}
+
+### 10. Генерація зображення - Вертикальне (1024x1792)
+POST {{baseUrl}}/ai/generate-image
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "prompt": "A tall futuristic skyscraper in a cyberpunk city at night",
+  "width": 1024,
+  "height": 1792
+}
+
+### 11. Генерація зображення - Креативне
+POST {{baseUrl}}/ai/generate-image
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "prompt": "A cute robot drinking coffee in a cozy café, digital art style",
+  "width": 1024,
+  "height": 1024
+}
+
+### ==========================================
+### AI CREDITS MANAGEMENT
+### ==========================================
+
+### 12. Перевірити баланс кредитів
+GET {{baseUrl}}/ai/credits
+Authorization: Bearer {{token}}
+
+### 13. Отримати детальну статистику кредитів
+GET {{baseUrl}}/ai/credits/stats
+Authorization: Bearer {{token}}
+
+### 14. Оновити кредити вручну (для тестування)
+PATCH {{baseUrl}}/ai/credits/reset
+Authorization: Bearer {{token}}
+
+### ==========================================
+### HISTORY & RETRIEVAL
+### ==========================================
+
+### 15. Отримати всі генерації (з пагінацією)
+GET {{baseUrl}}/ai/generations?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### 16. Отримати тільки текстові генерації
+GET {{baseUrl}}/ai/generations?type=text&page=1&limit=10
+Authorization: Bearer {{token}}
+
+### 17. Отримати тільки згенеровані зображення
+GET {{baseUrl}}/ai/generations?type=image&page=1&limit=10
+Authorization: Bearer {{token}}
+
+### 18. Отримати конкретну генерацію (замініть GENERATION_ID)
+GET {{baseUrl}}/ai/generations/GENERATION_ID
+Authorization: Bearer {{token}}
+
+### ==========================================
+### MEDIA ACCESS
+### ==========================================
+
+### 19. Переглянути згенероване зображення (замініть MEDIA_ID)
+GET {{baseUrl}}/media/MEDIA_ID
+Authorization: Bearer {{token}}
+
+### 20. Отримати список всіх медіа файлів
+GET {{baseUrl}}/media
+Authorization: Bearer {{token}}
+
+### ==========================================
+### OTHER ENDPOINTS
+### ==========================================
+
+### 21. Створити проект
+POST {{baseUrl}}/projects
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "My AI Generated Content",
+  "description": "Project with AI generated posts and images"
+}
+
+### 22. Завантажити файл (multipart/form-data)
+POST {{baseUrl}}/media/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="test-image.jpg"
+Content-Type: image/jpeg
+
+< ./test-image.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 23. Отримати список проектів
+GET {{baseUrl}}/projects?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### ==========================================
+### CREDITS USAGE TESTING SCENARIO
+### ==========================================
+
+### 24. Сценарій: Використати всі кредити
+# Спочатку перевірте баланс
+# Потім генеруйте тексти/зображення доки не закінчаться кредити
+# Спробуйте згенерувати ще - отримаєте помилку
+# Оновіть кредити через /ai/credits/reset
+

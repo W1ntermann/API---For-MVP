@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { randomUUID } from 'crypto';
 import { Template } from '../common/schemas/template.schema';
 import { TemplateCreateDto, TemplateUpdateDto } from './dto/templates.dto';
 
@@ -10,13 +11,38 @@ export class TemplatesService {
     @InjectModel(Template.name) private templateModel: Model<Template>,
   ) {}
 
-  async getUserTemplates(userId: string, projectId?: string) {
+  async getUserTemplates(
+    userId: string, 
+    projectId?: string, 
+    page: number = 1, 
+    limit: number = 20
+  ) {
     const query: any = { user_id: userId };
     if (projectId) {
       query.project_id = projectId;
     }
     
-    return this.templateModel.find(query, { _id: 0, __v: 0 }).exec();
+    const skip = (page - 1) * limit;
+    
+    const [templates, total] = await Promise.all([
+      this.templateModel
+        .find(query, { _id: 0, __v: 0 })
+        .sort({ created_at: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.templateModel.countDocuments(query)
+    ]);
+    
+    return {
+      templates,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   }
 
   async createTemplate(userId: string, templateData: TemplateCreateDto) {
@@ -83,6 +109,6 @@ export class TemplatesService {
   }
 
   private generateId(): string {
-    return Math.random().toString(36).substr(2, 9);
+    return randomUUID();
   }
 }

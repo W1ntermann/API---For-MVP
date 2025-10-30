@@ -3,6 +3,26 @@ import { TemplatesService } from './templates.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { TemplateCreateDto, TemplateUpdateDto } from './dto/templates.dto';
+import { Type } from 'class-transformer';
+import { IsOptional, IsInt, Min, Max } from 'class-validator';
+
+class TemplateQueryDto {
+  @IsOptional()
+  projectId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number = 20;
+}
 
 @Controller('templates')
 @UseGuards(JwtAuthGuard)
@@ -12,9 +32,14 @@ export class TemplatesController {
   @Get()
   async getTemplates(
     @CurrentUser() user: any,
-    @Query('projectId') projectId?: string,
+    @Query() query: TemplateQueryDto,
   ) {
-    return this.templatesService.getUserTemplates(user.user_id, projectId);
+    return this.templatesService.getUserTemplates(
+      user.user_id, 
+      query.projectId,
+      query.page,
+      query.limit,
+    );
   }
 
   @Post()

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { randomUUID } from 'crypto';
 import { Project } from '../common/schemas/project.schema';
 import { Template } from '../common/schemas/template.schema';
 import { ProjectCreateDto } from './dto/projects.dto';
@@ -12,8 +13,28 @@ export class ProjectsService {
     @InjectModel(Template.name) private templateModel: Model<Template>,
   ) {}
 
-  async getUserProjects(userId: string) {
-    return this.projectModel.find({ user_id: userId }, { _id: 0, __v: 0 }).exec();
+  async getUserProjects(userId: string, page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    
+    const [projects, total] = await Promise.all([
+      this.projectModel
+        .find({ user_id: userId }, { _id: 0, __v: 0 })
+        .sort({ created_at: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.projectModel.countDocuments({ user_id: userId })
+    ]);
+    
+    return {
+      projects,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   }
 
   async createProject(userId: string, projectData: ProjectCreateDto) {
@@ -47,18 +68,34 @@ export class ProjectsService {
   }
 
   async deleteProject(userId: string, projectId: string) {
-    const result = await this.projectModel.deleteOne({ id: projectId, user_id: userId }).exec();
+    const session = await this.projectModel.db.startSession();
+    session.startTransaction();
     
-    if (result.deletedCount === 0) {
-      throw new NotFoundException('Project not found');
-    }
+    try {
+      const result = await this.projectModel
+        .deleteOne({ id: projectId, user_id: userId })
+        .session(session);
+      
+      if (result.deletedCount === 0) {
+        await session.abortTransaction();
+        throw new NotFoundException('Project not found');
+      }
 
-    await this.templateModel.deleteMany({ project_id: projectId }).exec();
-    
-    return { message: 'Project deleted successfully' };
+      await this.templateModel
+        .deleteMany({ project_id: projectId })
+        .session(session);
+      
+      await session.commitTransaction();
+      return { message: 'Project deleted successfully' };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   }
 
   private generateId(): string {
-    return Math.random().toString(36).substr(2, 9);
+    return randomUUID();
   }
 }
