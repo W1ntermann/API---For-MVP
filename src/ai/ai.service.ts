@@ -95,6 +95,8 @@ export class AiService {
       const systemPrompt = `You are a creative content writer for social media. ${toneInstructions[tone] || toneInstructions.professional} ${lengthInstructions[length] || lengthInstructions.medium} Generate 3 different variations of the content.`;
 
       // Викликаємо OpenRouter API (працює з OpenAI моделями)
+      console.log('🔄 Calling OpenRouter API for text generation...');
+      
       const response = await lastValueFrom(
         this.httpService.post(
           'https://openrouter.ai/api/v1/chat/completions',
@@ -117,9 +119,23 @@ export class AiService {
         )
       );
 
+      console.log('📦 OpenRouter response status:', response.status);
+      console.log('📦 OpenRouter response data:', JSON.stringify(response.data, null, 2));
+
+      // Перевіряємо структуру відповіді
+      if (!response.data || !response.data.choices || response.data.choices.length === 0) {
+        throw new InternalServerErrorException('Invalid response from OpenRouter API');
+      }
+
       const variants = response.data.choices.map((choice: any) => 
-        choice.message.content.trim()
-      );
+        choice.message?.content?.trim() || ''
+      ).filter(v => v.length > 0);
+
+      if (variants.length === 0) {
+        throw new InternalServerErrorException('No text variants generated');
+      }
+
+      console.log(`✍️ Generated ${variants.length} text variants`);
 
       // Оновлюємо запис в БД
       await this.aiGenerationModel.updateOne(
@@ -140,16 +156,21 @@ export class AiService {
         'text_generation'
       );
 
-      console.log(`✅ Text generation completed: ${generationId}, Credits remaining: ${creditsRemaining}`);
-
-      return { 
+      const result = { 
         variants, 
         generation_id: generationId,
         credits_remaining: creditsRemaining
       };
 
+      console.log(`✅ Text generation completed: ${generationId}, Credits remaining: ${creditsRemaining}`);
+      console.log('📤 Returning to frontend:', JSON.stringify(result, null, 2));
+
+      return result;
+
     } catch (error) {
-      console.error('AI text generation error:', error);
+      console.error('❌ AI text generation error:', error);
+      console.error('❌ Error response:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
       
       // Оновлюємо статус на failed
       await this.aiGenerationModel.updateOne(
@@ -163,8 +184,13 @@ export class AiService {
         }
       );
 
+      const errorMessage = error.response?.data?.error?.message 
+        || error.response?.data?.message
+        || error.message 
+        || 'Unknown error';
+
       throw new InternalServerErrorException(
-        `AI text generation failed: ${error.response?.data?.error?.message || error.message}`
+        `AI text generation failed: ${errorMessage}`
       );
     }
   }

@@ -1,0 +1,44 @@
+### Debug AI Text Generation Response
+
+@baseUrl = http://localhost:5050/api
+@token = YOUR_TOKEN_HERE
+
+### 1. Login (get token)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@test.com",
+  "password": "test123"
+}
+
+### 2. Test Text Generation (copy token from step 1)
+POST {{baseUrl}}/ai/generate-text
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "prompt": "Write a short post about morning coffee",
+  "tone": "friendly",
+  "length": "short"
+}
+
+### Expected Response:
+# {
+#   "variants": [
+#     "variant 1 text here...",
+#     "variant 2 text here...",
+#     "variant 3 text here..."
+#   ],
+#   "generation_id": "uuid-here",
+#   "credits_remaining": 99
+# }
+
+### 3. Check credits
+GET {{baseUrl}}/ai/credits
+Authorization: Bearer {{token}}
+
+### 4. Get generation history
+GET {{baseUrl}}/ai/generations?page=1&limit=5
+Authorization: Bearer {{token}}
+
