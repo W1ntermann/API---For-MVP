@@ -13,6 +13,7 @@ import { AiCreditsService } from './ai-credits.service';
 import { HttpService } from '@nestjs/axios';
 import { lastValueFrom } from 'rxjs';
 import Replicate from 'replicate';
+import sharp from 'sharp';
 
 const pump = promisify(pipeline);
 
@@ -430,58 +431,78 @@ export class AiService {
     filePath: string
   ): Promise<void> {
     try {
-      // Генеруємо опис через GPT
-      const descriptionResponse = await lastValueFrom(
-        this.httpService.post(
-          'https://openrouter.ai/api/v1/chat/completions',
-          {
-            model: 'openai/gpt-3.5-turbo',
-            messages: [
-              {
-                role: 'system',
-                content: 'Create a short visual description for the image in 2-3 words.'
-              },
-              {
-                role: 'user',
-                content: prompt
-              }
-            ],
-            max_tokens: 50,
-          },
-          {
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
+      // Генеруємо короткий опис через GPT (необов'язково)
+      let shortDesc = 'Image';
+      try {
+        const descriptionResponse = await lastValueFrom(
+          this.httpService.post(
+            'https://openrouter.ai/api/v1/chat/completions',
+            {
+              model: 'openai/gpt-3.5-turbo',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'Create a short visual description for the image in 2-3 words.'
+                },
+                { role: 'user', content: prompt }
+              ],
+              max_tokens: 50,
             },
-          }
-        )
-      );
+            {
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              timeout: 15000,
+            }
+          )
+        );
+        shortDesc = (descriptionResponse.data.choices?.[0]?.message?.content || prompt).substring(0, 30);
+      } catch (descErr) {
+        console.warn('⚠️ Description generation failed, using generic text');
+      }
 
-      const shortDesc = descriptionResponse.data.choices?.[0]?.message?.content || prompt;
-      const encodedText = encodeURIComponent(shortDesc.substring(0, 30));
-      const placeholderUrl = `https://via.placeholder.com/${width}x${height}/4A90E2/FFFFFF?text=${encodedText}`;
-      
-      console.log('📥 Creating placeholder with description:', shortDesc.substring(0, 30));
-      
-      const imageResponse = await lastValueFrom(
-        this.httpService.get(placeholderUrl, { 
-          responseType: 'stream',
-          timeout: 10000 
-        })
-      );
-      
-      await pump(imageResponse.data, createWriteStream(filePath));
-      console.log('💾 Placeholder saved');
-      
+      console.log('📥 Creating local placeholder with description:', shortDesc);
+      await this.generateLocalPlaceholderPng(filePath, width, height, shortDesc);
+      console.log('💾 Placeholder saved locally');
+
     } catch (error) {
-      console.error('⚠️ Placeholder creation failed, using basic fallback');
-      // Простий fallback
-      const simpleUrl = `https://via.placeholder.com/${width}x${height}/4A90E2/FFFFFF?text=Image`;
-      const imageResponse = await lastValueFrom(
-        this.httpService.get(simpleUrl, { responseType: 'stream' })
-      );
-      await pump(imageResponse.data, createWriteStream(filePath));
+      console.error('⚠️ Local placeholder creation failed, using minimal fallback');
+      await this.generateLocalPlaceholderPng(filePath, width, height, 'Image');
     }
+  }
+
+  private async generateLocalPlaceholderPng(
+    filePath: string,
+    width: number,
+    height: number,
+    text: string,
+  ): Promise<void> {
+    const fontSize = Math.max(14, Math.floor(Math.min(width, height) / 12));
+    const safeText = this.escapeSvgText(text);
+
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4A90E2" />
+      <stop offset="100%" stop-color="#357ABD" />
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#bgGrad)"/>
+  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="${fontSize}" font-weight="700">${safeText}</text>
+</svg>`;
+
+    await sharp(Buffer.from(svg)).png().toFile(filePath);
+  }
+
+  private escapeSvgText(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   private generateId(): string {
